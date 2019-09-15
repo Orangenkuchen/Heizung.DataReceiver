@@ -1,3 +1,6 @@
+var SerialPort = require("serialport");
+var ReadLine = require('@serialport/parser-readline');
+
 export namespace SerialDataRepository {
     let dummyData = "Boiler 1;0115;23;2;�C;Vorlauf 1;0063;24;2;�C;Vorlauf 2;0065;25;2;�C;HK Pumpe 1;0000;26;1; ;HK Pumpe 2;0000;27;1; ;Aussentemp;0048;28;2;�C;Kollektortemp;0000;29;2;�C;Betriebsstunden;11162;30;1;h;Fehler;Kein Fehler ;99;1; ;�$ Heizen;0003;1;1;zst;Kesseltemp.;0173;2;2;�C;Abgastemp.;0159;3;1;�C;Abgastemp S;0161;11;1;�C;Kesselstrg ;0081;4;1;%;Prim�rluft ;0084;5;1;%;Rest O2 ist;0137;6;10;%;O2 Regler  ;0000;7;1;%;Sekund�rluft;0000;8;1;%;Saugzug Soll;0079;9;1;%;Saugzug Ist;2420;10;1;U;Einschub Ist;0000;12;1;%;O2 Regler Pell ;0100;13;1;%;F�llstand: ;0000;14;207;%;Ansauggeschw.;0000;15;100;m/s;Strom Austrags;0000;16;1000;A;F�hler 1;0254;17;2;�C;Kesselsoll ;0170;18;2;�C;Pufferoben ;0173;20;2;�C;Pufferunten ;0149;21;2;�C;Pufferpumpe ;0100;22;1;%;";
     let stopDummyDataInterval = null;
@@ -37,6 +40,17 @@ export namespace SerialDataRepository {
         connectionState: ConnectionState;
         // #endregion
 
+        // #region serialPort
+        serialPort: any;
+        // #endregion
+
+        // #region lineParser
+        /**
+         * Parser welcher aus dem Datenstrom Zeilen macht.
+         */
+        lineParser: any;
+        // #endregion
+
         // #region ctor
         /**
          * Erstellt die Klasse
@@ -44,7 +58,29 @@ export namespace SerialDataRepository {
          * @param serialPortName Der Name von Seriellen Port 
          */
         constructor(serialPortName: string) {
+            this.connectionState = ConnectionState.Disconnected;
             this.serialPortName = serialPortName;
+
+            this.lineParser = new ReadLine();
+        }
+        // #endregion
+
+        // #region connectDummy
+        /**
+         * Stellt keine Verbindung mit dem Seriellen Port her sondern liefert testdaten zurück
+         * 
+         * @param onDataCallback Callback, welcher ausgeführt wird, wenn Daten empfangen werden.
+         */
+        connectDummy(onDataCallback: (data: string) => void): void {
+            // Dummy Daten. Richtige Daten müsssen noch programmiert werden.
+
+            this.connectionState = ConnectionState.Connected;
+            
+            let intervalId = setInterval(function() {
+                onDataCallback(dummyData);
+            }, 1000);
+
+            stopDummyDataInterval = () => clearInterval(intervalId);
         }
         // #endregion
 
@@ -55,15 +91,18 @@ export namespace SerialDataRepository {
          * @param onDataCallback Callback, welcher ausgeführt wird, wenn Daten empfangen werden.
          */
         connect(onDataCallback: (data: string) => void): void {
-            // Dummy Daten. Richtige Daten müsssen noch programmiert werden.
-
-            this.connectionState = ConnectionState.Connected;
-            
-            let intervalId = setInterval(function() {
-                onDataCallback(dummyData);
-            }, 1000);
-
-            stopDummyDataInterval = () => clearInterval(intervalId);
+            if (this.connectionState == ConnectionState.Disconnected)
+            {
+                this.serialPort = new SerialPort(this.serialPortName, {
+                    baudRate: 57600
+                });
+                
+                // Parser mit dem Seriellen Port verbinden.
+                this.serialPort.pipe(this.lineParser);
+                
+                
+                this.lineParser.on('data', line => onDataCallback(line));
+            }
         }
         // #endregion
 
