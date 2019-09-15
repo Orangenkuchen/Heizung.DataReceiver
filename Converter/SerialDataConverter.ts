@@ -15,14 +15,14 @@ export namespace SerialDataConverter {
         value: number;
 
         /**
-         * Unbekanntes Feld1
+         * Der Index vom Wert
          */
-        unidentified1: any;
+        index: any;
 
         /**
-         * Unbekanntes Feld1
+         * Der Messwert wurde mit diesem Wert multipliziert um auf 'value' zu kommen
          */
-        unidentified2: any;
+        multiplacator: any;
 
         /**
          * Die Einheit des Werts
@@ -78,7 +78,7 @@ export namespace SerialDataConverter {
          * @reutrns Git die konvertieren Daten zurück
          */
         static heaterDataToArray(heaterData: string): HeaterValue[]{
-            let result: HeaterValue[];
+            let result: HeaterValue[] = [];
 
             let lineArray = this.matchAll(heaterDataSplitRegex, heaterData);
 
@@ -88,10 +88,10 @@ export namespace SerialDataConverter {
                 let heaterValue: HeaterValue = {
                     name: match[1],
                     value: parseFloat(match[2]),
-                    unidentified1: parseFloat(match[3]),
-                    unidentified2: parseFloat(match[4]),
+                    index: parseFloat(match[3]),
+                    multiplacator: parseFloat(match[4]),
                     unit: match[5]
-                }
+                };
 
                 result.push(heaterValue);
             });
