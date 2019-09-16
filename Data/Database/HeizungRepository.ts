@@ -70,12 +70,12 @@ export namespace HeizungsRepository {
                                                     });
                                                   })
                                                   
-                                                  connection.end();
+                                                  connection.release();
                                                   resolve(valueDescriptions);
                                               })
-                                              .catch(exc => console.error(exc));
+                                              .catch(exception => reject(exception));
                                })
-                               .catch(exc => console.error(exc));
+                               .catch(exception => reject(exception));
             });
             
             return result;
@@ -103,12 +103,12 @@ export namespace HeizungsRepository {
                                                       id = rows[0].Id;
                                                   }
                                                   
-                                                  connection.end();
+                                                  connection.release();
                                                   resolve(id);
                                               })
-                                              .catch(exc => console.error(exc));
+                                              .catch(exception => reject(exception));
                                })
-                               .catch(exc => console.error(exc));
+                               .catch(exception => reject(exception));
             });
             
             return result;
@@ -130,12 +130,12 @@ export namespace HeizungsRepository {
                                .then(connection => {
                                     connection.query(`INSERT INTO 'ErrorList' (Description) VALUE ('${errorText}')`)
                                               .then(result => {
-                                                  connection.end();
+                                                  connection.release();
                                                   resolve(result.insertId);
                                               })
-                                              .catch(exc => console.error(exc));
+                                              .catch(exception => reject(exception));
                                })
-                               .catch(exc => console.error(exc));
+                               .catch(exception => reject(exception));
             });
             
             return result;
@@ -149,11 +149,11 @@ export namespace HeizungsRepository {
          * @param heaterValues Array mit den HeaterValues
          * @returns Gibt ein Promise das angibt wenn der Insert abgeschlossen wurde
          */
-        public SetHeaterValue(heaterValues: SerialDataConverter.HeaterValue[]): Promise<Number> {
+        public SetHeaterValue(heaterValues: SerialDataConverter.HeaterValue[]): Promise<Boolean> {
             let that = this;
             let sqlInsertValues = new Array<string>();
             let currentTime = new Date();
-            let currentTimeString = `${currentTime.getFullYear()}-${this.twoDigits(currentTime.getMonth() + 1)}-${this.twoDigits(currentTime.getDate())} ${this.twoDigits(currentTime.getHours())}:${this.twoDigits(currentTime.getMinutes)}:${this.twoDigits(currentTime.getSeconds())}`;
+            let currentTimeString = `${currentTime.getFullYear()}-${this.twoDigits(currentTime.getMonth() + 1)}-${this.twoDigits(currentTime.getDate())} ${this.twoDigits(currentTime.getHours())}:${this.twoDigits(currentTime.getMinutes())}:${this.twoDigits(currentTime.getSeconds())}`;
 
             // Werte in ihren realen Wert umrechnen
             heaterValues.forEach(heaterValue => {
@@ -166,17 +166,19 @@ export namespace HeizungsRepository {
                 }
             });
 
-            let result: Promise<Number> = new Promise<Number>(function(resolve, reject) {
+            let sql = `INSERT INTO Heizung.DataValues (ValueType, Value, Timestamp) VALUES ${sqlInsertValues.join(", ")}`;
+
+            let result: Promise<Boolean> = new Promise<Boolean>(function(resolve, reject) {
                 that.connectionPool.getConnection()
                                .then(connection => {
-                                    connection.query(`INSERT INTO 'Values' (ValueType, Value, Date) VALUES ${sqlInsertValues.join(", ")}`)
+                                    connection.query(sql)
                                               .then(result => {
-                                                  connection.end();
-                                                  resolve();
+                                                  connection.release();
+                                                  resolve(true);
                                               })
-                                              .catch(exc => console.error(exc));
+                                              .catch(exception => reject(exception));
                                })
-                               .catch(exc => console.error(exc));
+                               .catch(exception => reject(exception))
             });
             
             return result;

@@ -101,7 +101,15 @@ export namespace SerialDataRepository {
                 this.serialPort.pipe(this.lineParser);
                 
                 
-                this.lineParser.on('data', line => onDataCallback(line));
+                this.lineParser.on('data', line => {
+                    if (this.connectionState != ConnectionState.Connected) {
+                        this.connectionState = ConnectionState.Connected;
+                    }
+                    
+                    onDataCallback(line);
+                });
+
+                this.connectionState = ConnectionState.Connecting;
             }
         }
         // #endregion
@@ -113,11 +121,7 @@ export namespace SerialDataRepository {
         disconnect(): void {
             if (this.connectionState == ConnectionState.Connected ||
                 this.connectionState == ConnectionState.Connecting) {
-                if (stopDummyDataInterval != null) {
-                    stopDummyDataInterval();
-                    
-                    stopDummyDataInterval = null;
-                }
+                this.serialPort.close();
 
                 this.connectionState = ConnectionState.Disconnected;
             }
