@@ -32,3 +32,5 @@ node_modules
 *.js.map
 
 package-lock\.json
+
+*.map
