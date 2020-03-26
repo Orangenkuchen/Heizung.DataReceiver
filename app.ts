@@ -5,8 +5,8 @@ import { APIService } from "./Services/APIService";
 console.info("Starte Heizung.DataReceiver");
 
 let usbSerialPortRepository = new SerialDataRepository.SerialDataRepository.SerialDataRepository("/dev/ttyUSB0");
-//let apiService: APIService = new APIService("http://***REMOVED***:8080");
 let apiService: APIService = new APIService("http://***REMOVED***:8080");
+//let apiService: APIService = new APIService("http://***REMOVED***:8080");
 let lastDataHashTable: { [index: number]: SerialDataConverter.SerialDataConverter.HeaterValue } = {};
 
 let handleOnDataReceived = function(data: string) {
