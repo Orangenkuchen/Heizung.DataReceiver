@@ -91,6 +91,8 @@ export namespace SerialDataRepository {
          * @param onDataCallback Callback, welcher ausgeführt wird, wenn Daten empfangen werden.
          */
         connect(onDataCallback: (data: string) => void): void {
+            console.log("connect called");
+
             if (this.connectionState == ConnectionState.Disconnected)
             {
                 this.serialPort = new SerialPort(this.serialPortName, {
@@ -100,10 +102,12 @@ export namespace SerialDataRepository {
                 // Parser mit dem Seriellen Port verbinden.
                 this.serialPort.pipe(this.lineParser);
                 
+                console.log("Connecting to serialport");
                 
                 this.lineParser.on('data', line => {
                     if (this.connectionState != ConnectionState.Connected) {
                         this.connectionState = ConnectionState.Connected;
+                        console.log("Connected to serialport");
                     }
                     
                     onDataCallback(line);

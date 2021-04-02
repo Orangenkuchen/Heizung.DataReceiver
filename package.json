@@ -1,0 +1,21 @@
+{
+  "name": "heizung.datareciever",
+  "version": "1.0.0",
+  "description": "Heizung.DataReciever",
+  "main": "app.js",
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "^14.14.37",
+    "serialport": "^7.1.5",
+    "xmlhttprequest": "^1.8.0"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "***REMOVED***@***REMOVED***:/media/hdd/festplatte-***REMOVED***/normal/GitRepositorys/heizung_datareceiver.git"
+  },
+  "author": "",
+  "license": "ISC"
+}
