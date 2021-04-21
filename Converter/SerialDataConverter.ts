@@ -22,7 +22,7 @@ export namespace SerialDataConverter {
         /**
          * Der Messwert wurde mit diesem Wert multipliziert um auf 'value' zu kommen
          */
-        multiplacator: any;
+        multiplicator: any;
 
         /**
          * Die Einheit des Werts
@@ -96,7 +96,7 @@ export namespace SerialDataConverter {
                     name: match[1],
                     value: value,
                     index: parseFloat(match[3]),
-                    multiplacator: parseFloat(match[4]),
+                    multiplicator: parseFloat(match[4]),
                     unit: match[5]
                 };
 

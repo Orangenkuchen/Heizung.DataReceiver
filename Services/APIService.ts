@@ -29,7 +29,7 @@ export class APIService {
     public SendHeaterValue(heaterValues: Array<SerialDataConverter.HeaterValue>) {
         var xmlHttpRequest = new XMLHttpRequest();
 
-        xmlHttpRequest.open('POST', this.apiAddress + '/HeaterData', true);
+        xmlHttpRequest.open('PUT', this.apiAddress + '/HeaterData/Latest', true);
         xmlHttpRequest.setRequestHeader('Content-Type', 'application/json');
         xmlHttpRequest.send(JSON.stringify(heaterValues));
     }
