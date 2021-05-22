@@ -1,12 +1,15 @@
 import SerialDataRepository = require("./Data/Serial/SerialDataRepository");
 import SerialDataConverter = require("./Converter/SerialDataConverter");
 import { APIService } from "./Services/APIService";
+import fs = require("fs");
 
 console.info("Starte Heizung.DataReceiver");
 
-let usbSerialPortRepository = new SerialDataRepository.SerialDataRepository.SerialDataRepository("/dev/ttyUSB0");
-let apiService: APIService = new APIService("http://***REMOVED***:8080");
-//let apiService: APIService = new APIService("http://***REMOVED***:8080");
+var configuration = JSON.parse(fs.readFileSync('settings.json', 'utf8'));
+
+let usbSerialPortRepository = new SerialDataRepository.SerialDataRepository.SerialDataRepository(configuration["SerialPort"]);
+
+let apiService: APIService = new APIService(configuration["DestinationApiAdress"]);
 let lastDataHashTable: { [index: number]: SerialDataConverter.SerialDataConverter.HeaterValue } = {};
 
 let handleOnDataReceived = function(data: string) {
