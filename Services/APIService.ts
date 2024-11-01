@@ -25,12 +25,68 @@ export class APIService {
      * Sendet die Heizwerte an die API
      * 
      * @param heaterValues Die Daten, welche gesendet werden sollen
+     * @param onDoneCallback Dieses Callback wird dann aufgerufen, wenn der Request abgeschlossen ist.
      */
-    public SendHeaterValue(heaterValues: Array<SerialDataConverter.HeaterValue>) {
+    public SendHeaterValue(heaterValues: Array<SerialDataConverter.HeaterValue>, onDoneCallback: (htmlStatusCode: number) => void) {
         var xmlHttpRequest = new XMLHttpRequest();
 
         xmlHttpRequest.open('PUT', this.apiAddress + '/HeaterData/Latest', true);
         xmlHttpRequest.setRequestHeader('Content-Type', 'application/json');
+
+        xmlHttpRequest.onreadystatechange = function () {
+            if (xmlHttpRequest.readyState === XMLHttpRequest.DONE) {
+                onDoneCallback(xmlHttpRequest.status);
+            }
+        };
+        
+
+        xmlHttpRequest.send(JSON.stringify(heaterValues));
+    }
+    // #endregion
+
+    // #region SendHeaterValue
+    /**
+     * Sendet die Heizwerte an die API
+     * 
+     * @param heaterValues Die Daten, welche gesendet werden sollen
+     * @param onDoneCallback Dieses Callback wird dann aufgerufen, wenn der Request abgeschlossen ist.
+     */
+    public SendHeaterValue(heaterValues: Array<SerialDataConverter.HeaterValue>, onDoneCallback: (htmlStatusCode: number) => void) {
+        var xmlHttpRequest = new XMLHttpRequest();
+
+        xmlHttpRequest.open('PUT', this.apiAddress + '/HeaterData/Latest', true);
+        xmlHttpRequest.setRequestHeader('Content-Type', 'application/json');
+
+        xmlHttpRequest.onreadystatechange = function () {
+            if (xmlHttpRequest.readyState === XMLHttpRequest.DONE) {
+                onDoneCallback(xmlHttpRequest.status);
+            }
+        };
+        
+
+        xmlHttpRequest.send(JSON.stringify(heaterValues));
+    }
+    // #endregion
+
+    // #region SendHeaterHistoryData
+    /**
+     * Sendet Heizungsdaten, die in die Datenbank eingefügt werden sollen an die API
+     * 
+     * @param heaterValues Die Daten, welche gesendet werden sollen
+     * @param onDoneCallback Dieses Callback wird dann aufgerufen, wenn der Request abgeschlossen ist.
+     */
+    public SendHeaterHistoryData(heaterValues: Array<SerialDataConverter.HeaterValue>, onDoneCallback: (htmlStatusCode: number) => void) {
+        var xmlHttpRequest = new XMLHttpRequest();
+
+        xmlHttpRequest.open('PUT', this.apiAddress + '/HeaterData/HistoryData', true);
+        xmlHttpRequest.setRequestHeader('Content-Type', 'application/json');
+
+        xmlHttpRequest.onreadystatechange = function () {
+            if (xmlHttpRequest.readyState === XMLHttpRequest.DONE) {
+                onDoneCallback(xmlHttpRequest.status);
+            }
+        };
+        
         xmlHttpRequest.send(JSON.stringify(heaterValues));
     }
     // #endregion
