@@ -48,6 +48,12 @@ class Program
     private lastDataHashTable: { [index: number]: SerialDataConverter.SerialDataConverter.HeaterValue };
 
     /**
+     * Beinhaltet die Heizungsdaten, welche nicht gespeichert werden konnten, weil die Api nicht erreichbar ist.
+     * Wird im ganzen an die Api gesendet, wenn diese wieder erreichbar ist.
+     */
+    private offlineValuesArray: Array<SerialDataConverter.SerialDataConverter.HeaterValue>;
+
+    /**
      * Gibt an, ob neue Daten empfangen wurden, die noch nicht an die Api gesendet wurden
      */
     private newData: boolean;
@@ -56,6 +62,11 @@ class Program
      * Gibt an, wann zuletzt versucht wurde die Verbindung zum seriellen Port wieder herzustellen
      */
     private lastConnectTry: Date | null;
+
+    /**
+     * Dieser Timer wird gesetzt, wenn der Api-Server nicht erreichbar ist und wird gestoppt wenn er wieder erreichbar ist.
+     */
+    private offlineSaveTimer: ReturnType<typeof setInterval> | null;
     // #endregion
 
     // #region ctor
@@ -71,9 +82,11 @@ class Program
         this.lastDataHashTable = {};
         this.newData = false;
         this.lastConnectTry = null;
+        this.offlineSaveTimer = null;
+        this.offlineValuesArray = new Array<SerialDataConverter.SerialDataConverter.HeaterValue>();
 
         setInterval(() => {
-            // Löscht die HashTable, damit alle Daten übertragen werden
+            // Löscht die HashTable, damit alle Daten übertragen werden.
             this.lastDataHashTable = {};
         }, 60 * 60 * 1000);
 
@@ -108,7 +121,7 @@ class Program
         if (this.newData) {
             this.apiService.SendHeaterValue(
                 convertedDataArray,
-                (statusCode) => { this.HandlOnDataSendCompleted(statusCode); }
+                (statusCode, responseText) => { this.HandlOnDataSendCompleted(statusCode, responseText); }
             );
         }
     }
@@ -121,10 +134,56 @@ class Program
      * und später gesendet.
      * 
      * @param httpStatusCode Der Status code, mit dem die Anfrage beendet wurde.
+     * @param responseText Der Text von der Antwort
      */
-    private HandlOnDataSendCompleted(httpStatusCode: number)
+    private HandlOnDataSendCompleted(httpStatusCode: number, responseText: string)
     {
-        
+        if (httpStatusCode == 0 && 
+            responseText.toLocaleLowerCase().indexOf("econnrefused") != -1)
+        {
+            if (this.offlineSaveTimer == null)
+            {
+                this.offlineSaveTimer = setInterval(
+                    () => {
+                        for (let propertyName in this.lastDataHashTable)
+                        {
+                            this.offlineValuesArray.push(
+                                {
+                                    index: this.lastDataHashTable[propertyName].index,
+                                    multiplicator: this.lastDataHashTable[propertyName].multiplicator,
+                                    name: this.lastDataHashTable[propertyName].name,
+                                    unit: this.lastDataHashTable[propertyName].unit,
+                                    value: this.lastDataHashTable[propertyName].value
+                                }
+                            );
+                        }
+                    },
+                    15 * 60 * 1000
+                );
+            }
+        }
+        else if (httpStatusCode == 200)
+        {
+            if (this.offlineSaveTimer != null)
+            {
+                clearInterval(this.offlineSaveTimer);
+                this.offlineSaveTimer = null;
+            }
+
+            if (this.offlineValuesArray.length > 0)
+            {
+                this.apiService.SendHeaterHistoryData(
+                    this.offlineValuesArray, 
+                    (httpStatus) =>
+                    {
+                        if (httpStatus == 200)
+                        {
+                            this.offlineValuesArray.length = 0;
+                        }
+                    }
+                );
+            }
+        }
     }
     // #endregion
 
