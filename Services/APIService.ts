@@ -28,7 +28,7 @@ export class APIService {
      * @param onDoneCallback Dieses Callback wird dann aufgerufen, wenn der Request abgeschlossen ist.
      */
     public SendHeaterValue(heaterValues: Array<SerialDataConverter.HeaterValue>, onDoneCallback: (htmlStatusCode: number, resposeText: string) => void) {
-        var xmlHttpRequest = new XMLHttpRequest();
+        let xmlHttpRequest = new XMLHttpRequest();
 
         xmlHttpRequest.open('PUT', this.apiAddress + '/HeaterData/Latest', true);
         xmlHttpRequest.setRequestHeader('Content-Type', 'application/json');
@@ -51,19 +51,21 @@ export class APIService {
      * @param heaterValues Die Daten, welche gesendet werden sollen
      * @param onDoneCallback Dieses Callback wird dann aufgerufen, wenn der Request abgeschlossen ist.
      */
-    public SendHeaterHistoryData(heaterValues: Array<SerialDataConverter.HeaterValue>, onDoneCallback: (htmlStatusCode: number, resposeText: string) => void) {
-        var xmlHttpRequest = new XMLHttpRequest();
+    public SendHeaterHistoryData(heaterValues: Array<SerialDataConverter.HistoryHeaterValue>, onDoneCallback: (htmlStatusCode: number, resposeText: string) => void) {
+        let xml_HttpRequest = new XMLHttpRequest();
 
-        xmlHttpRequest.open('PUT', this.apiAddress + '/HeaterData/HistoryData', true);
-        xmlHttpRequest.setRequestHeader('Content-Type', 'application/json');
+        xml_HttpRequest.open('PUT', this.apiAddress + '/HeaterData/HistoryData', true);
+        xml_HttpRequest.setRequestHeader('Content-Type', 'application/json');
 
-        xmlHttpRequest.onreadystatechange = function () {
-            if (xmlHttpRequest.readyState === XMLHttpRequest.DONE) {
-                onDoneCallback(xmlHttpRequest.status, xmlHttpRequest.responseText);
+        xml_HttpRequest.onreadystatechange = function () {
+            console.debug("SendHeaterHistoryData status: %i", xml_HttpRequest.readyState);
+
+            if (xml_HttpRequest.readyState === XMLHttpRequest.DONE) {
+                onDoneCallback(xml_HttpRequest.status, xml_HttpRequest.responseText);
             }
         };
         
-        xmlHttpRequest.send(JSON.stringify(heaterValues));
+        xml_HttpRequest.send(JSON.stringify(heaterValues));
     }
     // #endregion
 }

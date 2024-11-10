@@ -30,6 +30,19 @@ export namespace SerialDataConverter {
         unit: string;
     }
     // #endregion
+
+    // #region HistoryHeaterValue
+    /**
+     * Heizungswert mit Zeitstempel
+     */
+    export interface HistoryHeaterValue extends HeaterValue
+    {
+        /**
+         * Der Zeitstempel, an dem der Heizungswert aufgenommen wurde
+         */
+        timestamp: Date;
+    }
+    // #endregion
     
     // #region heaterDataSplitRegex
     /**

@@ -2,6 +2,7 @@ import SerialDataRepository = require("./Data/Serial/SerialDataRepository");
 import SerialDataConverter = require("./Converter/SerialDataConverter");
 import { APIService } from "./Services/APIService";
 import fs = require("fs");
+import { Console } from "console";
 
 /**
  * Die Settings von der Anwendung
@@ -51,7 +52,7 @@ class Program
      * Beinhaltet die Heizungsdaten, welche nicht gespeichert werden konnten, weil die Api nicht erreichbar ist.
      * Wird im ganzen an die Api gesendet, wenn diese wieder erreichbar ist.
      */
-    private offlineValuesArray: Array<SerialDataConverter.SerialDataConverter.HeaterValue>;
+    private offlineValuesArray: Array<SerialDataConverter.SerialDataConverter.HistoryHeaterValue>;
 
     /**
      * Gibt an, ob neue Daten empfangen wurden, die noch nicht an die Api gesendet wurden
@@ -75,6 +76,8 @@ class Program
      */
     public constructor()
     {
+        console.info("Initialisiere die Klasse Programm...");
+
         this.configuration = JSON.parse(fs.readFileSync('settings.json', 'utf8'));
         this.usbSerialPortRepository = new SerialDataRepository.SerialDataRepository.SerialDataRepository(this.configuration["SerialPort"]);
         this.apiService = new APIService(this.configuration["DestinationApiAdress"]);
@@ -83,12 +86,24 @@ class Program
         this.newData = false;
         this.lastConnectTry = null;
         this.offlineSaveTimer = null;
-        this.offlineValuesArray = new Array<SerialDataConverter.SerialDataConverter.HeaterValue>();
+        this.offlineValuesArray = new Array<SerialDataConverter.SerialDataConverter.HistoryHeaterValue>();
 
+        let clearStatusIntervalMs = 60 * 60 * 1000;
+        console.info("Starten den Interval zum ablöschen des aktuellen Status (damit alles neu übertragen wird; %i)...", clearStatusIntervalMs);
         setInterval(() => {
             // Löscht die HashTable, damit alle Daten übertragen werden.
+            console.debug("Lösche den aktuellen Status, damit alles neu übertragen wird...");
             this.lastDataHashTable = {};
-        }, 60 * 60 * 1000);
+        }, clearStatusIntervalMs);
+
+        let sendNewDataToApiIfAwailableMs = 2000;
+        console.info("State den Interval (%i ms) zum überprüfen und senden von neuen Daten an die API...", sendNewDataToApiIfAwailableMs);
+        setInterval(() =>
+            {
+                this.CheckIfNewDataToSendExists();
+            },
+            sendNewDataToApiIfAwailableMs
+        );
 
         setInterval(
             () => {
@@ -96,6 +111,8 @@ class Program
             },
             10 * 1000
         );
+
+        console.info("Programm initialisiert...");
     }
     // #endregion
 
@@ -117,12 +134,30 @@ class Program
                 this.lastDataHashTable[convertedData.index] = convertedData;
             }
         });
+    }
+    // #endregion
 
+    // #region CheckIfNewDataToSendExists
+    /**
+     * Überprüft, ob neue Daten vorhanden sind und sendet diese dann an die API.
+     */
+    private CheckIfNewDataToSendExists()
+    {
         if (this.newData) {
+            console.debug("Neue Daten empfangen. Sende diese an die API...");
+
+            let dataArray = new Array<SerialDataConverter.SerialDataConverter.HeaterValue>();
+
+            for (let key in this.lastDataHashTable)
+            {
+                dataArray.push(this.lastDataHashTable[key])
+            }
+
             this.apiService.SendHeaterValue(
-                convertedDataArray,
+                dataArray,
                 (statusCode, responseText) => { this.HandlOnDataSendCompleted(statusCode, responseText); }
             );
+            this.newData = false;
         }
     }
     // #endregion
@@ -138,13 +173,21 @@ class Program
      */
     private HandlOnDataSendCompleted(httpStatusCode: number, responseText: string)
     {
-        if (httpStatusCode == 0 && 
-            responseText.toLocaleLowerCase().indexOf("econnrefused") != -1)
+        console.debug("Senden der Daten an die API abgeschlossen. Überüfe den Status code (%i, %s)...", httpStatusCode, responseText);
+
+        if (httpStatusCode == 0)
         {
+            console.debug("Senden der Daten an die API konnte nicht durchgeführt werden. Überprüfe, ob der offlineSaveTimer läuft...");
+
             if (this.offlineSaveTimer == null)
             {
+                let offlineSaveTimerMs = 15 * 60 * 1000;
+                console.debug("Der Offline-Save-Timer läuft noch nicht. Erstelle diesen (%i ms)...", offlineSaveTimerMs);
+                
                 this.offlineSaveTimer = setInterval(
                     () => {
+                        console.debug("Offline-Timer abgelaufen. Da keine Verbindung zur Api besteht, werden die aktuellen Daten zwischengespeichert...");
+
                         for (let propertyName in this.lastDataHashTable)
                         {
                             this.offlineValuesArray.push(
@@ -153,35 +196,52 @@ class Program
                                     multiplicator: this.lastDataHashTable[propertyName].multiplicator,
                                     name: this.lastDataHashTable[propertyName].name,
                                     unit: this.lastDataHashTable[propertyName].unit,
-                                    value: this.lastDataHashTable[propertyName].value
+                                    value: this.lastDataHashTable[propertyName].value,
+                                    timestamp: new Date()
                                 }
                             );
                         }
+
+                        console.debug("Element in der Offline-Queue: %i", this.offlineValuesArray.length);
                     },
-                    15 * 60 * 1000
+                    offlineSaveTimerMs
                 );
             }
         }
-        else if (httpStatusCode == 200)
+        else if (httpStatusCode >= 200 && httpStatusCode <= 299)
         {
+            console.debug("Senden der Daten an die API war erfolgreich.");
+
             if (this.offlineSaveTimer != null)
             {
+                console.debug("Der Offline-Save-Timer ist noch aktiv. Da das senden erfolgreich war, wird dieser gestoppt...");
+
                 clearInterval(this.offlineSaveTimer);
                 this.offlineSaveTimer = null;
             }
 
             if (this.offlineValuesArray.length > 0)
             {
+                console.debug("Es sind noch Offline-Daten vorhanden (%i). Sende diese an die API...", this.offlineValuesArray.length);
+                console.debug("TEST: %s", JSON.stringify(this.offlineValuesArray));
                 this.apiService.SendHeaterHistoryData(
                     this.offlineValuesArray, 
-                    (httpStatus) =>
+                    (httpStatus, responseText) =>
                     {
-                        if (httpStatus == 200)
+                        console.debug("Senden der Offline-Daten abgeschlossen. Überpüfe den Status code...");
+
+                        if (httpStatus >= 200 && httpStatus <= 299)
                         {
+                            console.debug("Senden der Offlilne-Daten an die API erfolgreich. Lösche diese ab...");
                             this.offlineValuesArray.length = 0;
+                        }
+                        else
+                        {
+                            console.error("Senden der Offline-Daten an die Api fehlgeschlagen (%i, %s)...", httpStatus, responseText);
                         }
                     }
                 );
+                this.offlineValuesArray.length = 0;
             }
         }
     }
@@ -195,12 +255,13 @@ class Program
     {
         if (this.usbSerialPortRepository.connectionState == SerialDataRepository.SerialDataRepository.ConnectionState.Disconnected ||
             (this.usbSerialPortRepository.connectionState == SerialDataRepository.SerialDataRepository.ConnectionState.Connecting &&
-            new Date().getTime() - this.lastConnectTry.getTime() > 30 * 1000)) {
+            new Date().getTime() - this.lastConnectTry.getTime() > 30 * 1000))
+        {
             console.warn("Verbindung zum USB-Seriell-Adapter verloren. Verbindung wird wiederhergestellt.");
 
             try {
                 this.lastConnectTry = new Date();
-                this.usbSerialPortRepository.connect(this.HandleOnDataReceived);
+                this.usbSerialPortRepository.connect((data) => {  this.HandleOnDataReceived(data) });
             } catch (exception) {
                 console.error(`Fehler beim Verbinden zum USB-Seriell-Adapter: ${exception}`);
             }
@@ -209,4 +270,5 @@ class Program
     // #endregion
 }
 
+console.info("State den Hauptablauf...");
 let programm = new Program();
